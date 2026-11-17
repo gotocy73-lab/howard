@@ -76,9 +76,6 @@
   .row + .row { border-top: 1px dashed var(--line); }
   .row .cell { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
   .row .company { font-weight: 500; width: 100%; }
-  .row .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--fs-xs); color: var(--muted); }
-  .row .meta label { display: inline-flex; align-items: center; gap: 6px; }
-  .row .meta input { padding: 2px 6px; font-size: var(--fs-xs); }
   .row .lbl { display: none; font-size: var(--fs-xs); color: var(--muted); }
   .prev { font-size: var(--fs-xs); color: var(--muted); }
   .prev summary { cursor: pointer; }
@@ -190,8 +187,8 @@
       </section>
 
       <section class="panel" aria-labelledby="sched-h">
-        <h3 id="sched-h">주간일정</h3>
-        <textarea class="field" id="schedule" rows="5" placeholder="주간 주요 일정 공유사항 (날짜, 시간, 참석자)"></textarea>
+        <h3 id="sched-h">공통 주간일정</h3>
+        <textarea class="field" id="schedule" rows="5" placeholder="팀 공통 주간 주요 일정 (날짜, 시간, 참석자)"></textarea>
       </section>
 
       <section class="panel" aria-labelledby="common-h">
@@ -203,8 +200,8 @@
         <summary>작성 방법</summary>
         <ol>
           <li>담당자별로 기업명을 적고, 주간 주요 행사와 업무계획을 작성합니다.</li>
-          <li>마감기한은 내부에서 확인할 수 있도록 꼭 적습니다.</li>
-          <li>주간일정에는 주간 주요 일정 공유사항을 작성합니다.</li>
+          <li>마감기한은 내부에서 확인할 수 있도록 업무 내용에 꼭 적습니다.</li>
+          <li>공통 주간일정에는 주간 주요 일정 공유사항을 작성합니다.</li>
           <li>공통업무에는 통합모금 제안 등 팀 내 주요 공통업무를 작성합니다.</li>
         </ol>
         <p>입력을 잠시 멈추면 자동으로 저장됩니다. 다른 팀원이 고친 내용은 약 20초마다 화면에 반영됩니다.</p>
@@ -484,7 +481,6 @@
   function buildRow(id) {
     var company = h('input', { class: 'field company', id: 'co-' + id, placeholder: '기업명', maxlength: '60', 'aria-label': '기업명' });
     var content = h('textarea', { class: 'field', id: 'ct-' + id, rows: '2', placeholder: '주요 보고사항 및 업무 진행 내용', 'aria-label': '주요 보고사항 및 업무 진행 내용' });
-    var due = h('input', { class: 'field', type: 'date', id: 'du-' + id });
     var feedback = h('textarea', { class: 'field', id: 'fb-' + id, rows: '2', placeholder: '피드백', 'aria-label': '피드백' });
     var prevText = h('pre');
     var prevUse = h('button', { class: 'btn btn-quiet', type: 'button', text: '이 내용 가져오기' });
@@ -494,7 +490,7 @@
       h('div', { class: 'cell c-company' }, company),
       h('div', { class: 'cell c-content' },
         h('span', { class: 'lbl', text: '주요 보고사항 및 업무 진행 내용' }), content,
-        h('div', { class: 'meta' }, h('label', null, '마감기한', due), prevBox)),
+        prevBox),
       h('div', { class: 'cell c-feedback' }, h('span', { class: 'lbl', text: '피드백' }), feedback),
       h('div', { class: 'cell c-del' }, del));
     var key = 'item:' + id;
@@ -511,7 +507,7 @@
         if (e && e.timer) flush(e); else { var it = items.get(id); if (it) setField(input, it[field]); }
       });
     }
-    bind(company, 'company'); bind(content, 'content'); bind(due, 'due'); bind(feedback, 'feedback');
+    bind(company, 'company'); bind(content, 'content'); bind(feedback, 'feedback');
     prevUse.addEventListener('click', function () {
       content.value = prevText.textContent; grow(content);
       var it = items.get(id); if (it) it.content = content.value;
@@ -530,7 +526,7 @@
       items.delete(id); renderReport();
       write('deleteItem', [id]).catch(function () {});
     });
-    var r = { root: root, company: company, content: content, due: due, feedback: feedback, prevBox: prevBox, prevText: prevText };
+    var r = { root: root, company: company, content: content, feedback: feedback, prevBox: prevBox, prevText: prevText };
     rowEls.set(id, r);
     return r;
   }
@@ -586,7 +582,7 @@
       var mine = sorted.filter(function (it) { return it.owner === owner; });
       var wantedRows = mine.map(function (it) {
         var r = rowEls.get(it.id) || buildRow(it.id);
-        setField(r.company, it.company); setField(r.content, it.content); setField(r.due, it.due); setField(r.feedback, it.feedback);
+        setField(r.company, it.company); setField(r.content, it.content); setField(r.feedback, it.feedback);
         var prev = prevItems.get(it.owner + '|' + it.company);
         r.prevBox.hidden = !prev;
         if (prev && r.prevText.textContent !== prev) r.prevText.textContent = prev;
@@ -670,14 +666,14 @@
       if (!mine.length) return;
       out.push('[' + owner + ']');
       mine.forEach(function (it) {
-        out.push('■ ' + (it.company || '(기업명 없음)') + (it.due ? ' · 마감 ' + it.due : ''));
+        out.push('■ ' + (it.company || '(기업명 없음)'));
         if (it.content) out.push(it.content);
         if (it.feedback) out.push('→ 피드백: ' + it.feedback);
         out.push('');
       });
     });
     if (w.fundAmount != null) out.push('[모금현황] ' + fmtWon(w.fundAmount) + (w.fundPct != null ? ' (' + w.fundPct + '%)' : ''), '');
-    if (w.schedule) out.push('[주간일정]', w.schedule, '');
+    if (w.schedule) out.push('[공통 주간일정]', w.schedule, '');
     if (w.common) out.push('[공통업무]', w.common, '');
     return out.join('\n').trim();
   }
