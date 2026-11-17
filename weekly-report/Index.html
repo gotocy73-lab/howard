@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  :root {
+    --bg: #f3f5f2; --surface: #ffffff; --sunken: #f7f9f6; --ink: #1b2421; --muted: #5d6a65; --line: #dce2dd;
+    --accent: #0e6a5a; --accent-ink: #ffffff; --accent-soft: #e0efea; --warn: #a35200; --bad: #b3261e;
+    --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    --font-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    --fs-xs: 0.78rem; --fs-sm: 0.875rem; --fs-md: 0.95rem; --fs-lg: 1.15rem; --fs-xl: 1.6rem; --radius: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111615; --surface: #19201e; --sunken: #141a19; --ink: #e6ece9; --muted: #99a6a1; --line: #2a3432;
+      --accent: #5cc5ad; --accent-ink: #0c1513; --accent-soft: #17302b; --warn: #f0a653; --bad: #f2867d; color-scheme: dark; }
+  }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: var(--fs-md); line-height: 1.55; }
+  [hidden] { display: none !important; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .bar { position: sticky; top: 0; z-index: 9; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .bar-in, .wrap { max-width: 1280px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+  .bar-in { padding-top: 10px; padding-bottom: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+  .bar h1 { font-size: var(--fs-lg); font-weight: 600; margin: 0; margin-right: auto; }
+  .weeknav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  #save-status { font-size: var(--fs-xs); color: var(--muted); min-width: 7em; text-align: right; }
+  #save-status[data-state="error"] { color: var(--bad); }
+
+  .btn { border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 6px 12px; cursor: pointer; font-size: var(--fs-sm); line-height: 1.3; }
+  .btn:hover:not(:disabled) { border-color: var(--accent); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 500; }
+  .btn-quiet { border-color: transparent; background: transparent; color: var(--muted); padding: 4px 8px; }
+  .btn-quiet:hover:not(:disabled) { color: var(--ink); border-color: var(--line); }
+  .btn-danger { color: var(--bad); }
+  .btn-icon { width: 34px; padding: 6px 0; text-align: center; }
+  select.field, input.field, textarea.field { border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 6px 9px; min-width: 0; box-sizing: border-box; }
+  textarea.field { resize: vertical; width: 100%; min-height: 2.7em; field-sizing: content; line-height: 1.5; display: block; }
+  .field:hover:not(:disabled) { border-color: var(--muted); }
+  .field::placeholder { color: var(--muted); opacity: .7; }
+
+  .wrap { padding-top: 20px; padding-bottom: 56px; display: flex; flex-direction: column; gap: 16px; }
+  .notice { border: 1px solid var(--line); border-left: 3px solid var(--warn); background: var(--surface); border-radius: var(--radius); padding: 10px 14px; font-size: var(--fs-sm); margin: 0; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .panel h2, .panel h3 { margin: 0; font-size: var(--fs-md); font-weight: 600; }
+  .state { text-align: center; padding: 48px 16px; color: var(--muted); }
+  .state strong { display: block; color: var(--ink); font-size: var(--fs-lg); font-weight: 600; margin-bottom: 6px; }
+
+  .newweek form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 16px; margin-top: 12px; }
+  .newweek label { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-sm); color: var(--muted); }
+  .newweek .check { flex-direction: row; align-items: center; gap: 8px; color: var(--ink); padding-bottom: 7px; }
+  .newweek .hint { flex-basis: 100%; margin: 0; font-size: var(--fs-xs); color: var(--muted); }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+  .report { min-width: 0; padding: 0; }
+  .report-head { padding: 16px 16px 12px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; border-bottom: 1px solid var(--line); }
+  .report-head h2 { font-size: var(--fs-xl); font-weight: 600; margin: 0; line-height: 1.2; }
+  .report-head .range { color: var(--muted); font-family: var(--font-num); font-size: var(--fs-sm); margin-right: auto; }
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--sunken); }
+  .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 12px; font-size: var(--fs-sm); cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+  .cols, .row { display: grid; grid-template-columns: minmax(110px, 170px) minmax(0, 1fr) minmax(150px, 230px) 34px; gap: 6px 12px; }
+  .cols { padding: 8px 16px; font-size: var(--fs-xs); color: var(--muted); letter-spacing: .02em; border-bottom: 1px solid var(--line); }
+  .group { border-bottom: 1px solid var(--line); }
+  .group:last-child { border-bottom: 0; }
+  .group-head { display: flex; align-items: center; gap: 10px; padding: 10px 16px 4px; }
+  .group-head h3 { font-size: var(--fs-md); font-weight: 600; margin: 0; }
+  .group-head .count { color: var(--muted); font-size: var(--fs-xs); margin-right: auto; }
+  .rows { display: flex; flex-direction: column; }
+  .row { padding: 8px 16px; align-items: start; }
+  .row + .row { border-top: 1px dashed var(--line); }
+  .row .cell { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .row .company { font-weight: 500; width: 100%; }
+  .row .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--fs-xs); color: var(--muted); }
+  .row .meta label { display: inline-flex; align-items: center; gap: 6px; }
+  .row .meta input { padding: 2px 6px; font-size: var(--fs-xs); }
+  .row .lbl { display: none; font-size: var(--fs-xs); color: var(--muted); }
+  .prev { font-size: var(--fs-xs); color: var(--muted); }
+  .prev summary { cursor: pointer; }
+  .prev pre { margin: 6px 0; padding: 8px 10px; background: var(--sunken); border-radius: var(--radius); white-space: pre-wrap; word-break: break-word; font: inherit; color: var(--ink); }
+  .empty-row { padding: 6px 16px 12px; color: var(--muted); font-size: var(--fs-sm); margin: 0; }
+  .member-form { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--line); background: var(--sunken); align-items: center; }
+  .member-form label { font-size: var(--fs-sm); color: var(--muted); }
+
+  .side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .side .panel { display: flex; flex-direction: column; gap: 10px; }
+  .fund-num { font-family: var(--font-num); font-size: var(--fs-xl); font-variant-numeric: tabular-nums; line-height: 1.15; overflow-wrap: anywhere; }
+  .fund-num small { font-family: var(--font-body); font-size: var(--fs-sm); color: var(--muted); margin-left: 4px; }
+  .meter { height: 8px; border-radius: 4px; background: var(--accent-soft); overflow: hidden; }
+  .meter > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 4px; }
+  .fund-sub { font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; margin: 0; }
+  .fund-grid { display: grid; grid-template-columns: 1fr 84px; gap: 8px; }
+  .fund-grid label, .stack-label { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-xs); color: var(--muted); min-width: 0; }
+  .fund-grid input, .stack-label input { width: 100%; font-family: var(--font-num); font-variant-numeric: tabular-nums; text-align: right; }
+  .guide { font-size: var(--fs-sm); }
+  .guide summary { cursor: pointer; font-weight: 600; }
+  .guide ol { margin: 8px 0 0; padding-left: 1.3em; color: var(--muted); }
+  .guide p { margin: 10px 0 0; color: var(--muted); }
+  .guide .manage { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; color: var(--muted); }
+  #copy-area { position: fixed; left: -9999px; top: 0; }
+
+  @media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 720px) {
+    .cols { display: none; }
+    .row { grid-template-columns: minmax(0, 1fr) 34px; }
+    .row .c-company { grid-column: 1; grid-row: 1; }
+    .row .c-del { grid-column: 2; grid-row: 1; }
+    .row .c-content, .row .c-feedback { grid-column: 1 / -1; }
+    .row .lbl { display: block; }
+    .bar h1 { flex-basis: 100%; }
+    #save-status { text-align: left; }
+  }
+  @media (prefers-reduced-motion: no-preference) { .meter > i { transition: width .3s ease-out; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-in">
+    <h1>CSR협력 2팀 주간보고</h1>
+    <div class="weeknav">
+      <button class="btn btn-icon" id="week-prev" type="button" aria-label="이전 주차" disabled>◀</button>
+      <select class="field" id="week-select" aria-label="주차 선택" disabled></select>
+      <button class="btn btn-icon" id="week-next" type="button" aria-label="다음 주차" disabled>▶</button>
+      <button class="btn btn-primary" id="week-new" type="button" disabled>새 주차</button>
+    </div>
+    <span id="save-status" role="status" aria-live="polite"></span>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="notice" id="notice" hidden></p>
+
+  <section class="panel newweek" id="newweek" hidden>
+    <h2>새 주차 만들기</h2>
+    <form id="newweek-form">
+      <label>시작일 (그 주의 아무 날짜나 골라도 월요일로 맞춰집니다)
+        <input class="field" type="date" id="newweek-date" required>
+      </label>
+      <label class="check"><input type="checkbox" id="newweek-copy" checked> 직전 주차의 담당자·기업 목록 가져오기</label>
+      <button class="btn btn-primary" type="submit" id="newweek-submit">만들기</button>
+      <button class="btn" type="button" id="newweek-cancel">취소</button>
+      <p class="hint" id="newweek-hint"></p>
+    </form>
+  </section>
+
+  <div class="panel state" id="state">
+    <strong>주간보고를 불러오는 중입니다</strong>
+    <span>담당자별 기업 업무, 모금현황, 주간일정이 여기에 표시됩니다.</span>
+  </div>
+
+  <div class="layout" id="layout" hidden>
+    <section class="panel report" aria-labelledby="week-title">
+      <div class="report-head">
+        <h2 id="week-title"></h2>
+        <span class="range" id="week-range"></span>
+        <button class="btn" type="button" id="copy-text">보고 내용 복사</button>
+      </div>
+      <div class="filters" id="filters" role="group" aria-label="담당자별로 보기"></div>
+      <div class="cols" aria-hidden="true"><span>기업명</span><span>주요 보고사항 및 업무 진행 내용</span><span>피드백</span><span></span></div>
+      <div id="groups"></div>
+      <form class="member-form" id="member-form">
+        <label for="member-name">담당자 추가</label>
+        <input class="field" id="member-name" maxlength="20" placeholder="이름">
+        <button class="btn" type="submit">추가</button>
+      </form>
+    </section>
+
+    <aside class="side">
+      <section class="panel" aria-labelledby="fund-h">
+        <h3 id="fund-h">모금현황</h3>
+        <div class="fund-num"><span id="fund-big">—</span><small id="fund-pct-big"></small></div>
+        <div class="meter" aria-hidden="true"><i id="fund-bar"></i></div>
+        <p class="fund-sub" id="fund-sub"></p>
+        <div class="fund-grid">
+          <label>누적 모금액(원)
+            <input class="field" id="fund-amount" inputmode="numeric" autocomplete="off" placeholder="0">
+          </label>
+          <label>달성률(%)
+            <input class="field" id="fund-pct" inputmode="decimal" autocomplete="off" placeholder="0">
+          </label>
+        </div>
+        <label class="stack-label">연간 모금 목표(원) · 입력하면 달성률이 자동 계산됩니다
+          <input class="field" id="fund-target" inputmode="numeric" autocomplete="off" placeholder="목표액">
+        </label>
+      </section>
+
+      <section class="panel" aria-labelledby="sched-h">
+        <h3 id="sched-h">주간일정</h3>
+        <textarea class="field" id="schedule" rows="5" placeholder="주간 주요 일정 공유사항 (날짜, 시간, 참석자)"></textarea>
+      </section>
+
+      <section class="panel" aria-labelledby="common-h">
+        <h3 id="common-h">공통업무</h3>
+        <textarea class="field" id="common" rows="3" placeholder="통합모금 제안 등 팀 내 주요 공통업무"></textarea>
+      </section>
+
+      <details class="panel guide">
+        <summary>작성 방법</summary>
+        <ol>
+          <li>담당자별로 기업명을 적고, 주간 주요 행사와 업무계획을 작성합니다.</li>
+          <li>마감기한은 내부에서 확인할 수 있도록 꼭 적습니다.</li>
+          <li>주간일정에는 주간 주요 일정 공유사항을 작성합니다.</li>
+          <li>공통업무에는 통합모금 제안 등 팀 내 주요 공통업무를 작성합니다.</li>
+        </ol>
+        <p>입력을 잠시 멈추면 자동으로 저장됩니다. 다른 팀원이 고친 내용은 약 20초마다 화면에 반영됩니다.</p>
+        <p id="whoami"></p>
+      </details>
+
+      <details class="panel guide">
+        <summary>주차 관리</summary>
+        <div class="manage">
+          <span>이 주차와 그 안의 모든 기업 업무를 지웁니다. 되돌릴 수 없습니다.</span>
+          <button class="btn btn-danger" type="button" id="week-delete">이 주차 삭제</button>
+        </div>
+      </details>
+    </aside>
+  </div>
+</main>
+<textarea id="copy-area" aria-hidden="true" tabindex="-1"></textarea>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  function h(tag, attrs) {
+    var n = document.createElement(tag);
+    for (var k in (attrs || {})) {
+      var v = attrs[k];
+      if (v === false || v == null) continue;
+      if (k === 'class') n.className = v;
+      else if (k === 'text') n.textContent = v;
+      else n.setAttribute(k, v === true ? '' : v);
+    }
+    for (var i = 2; i < arguments.length; i++) { if (arguments[i] != null) n.append(arguments[i]); }
+    return n;
+  }
+
+  /* ---------- 날짜와 주차 이름 ---------- */
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  var parseDay = function (s) { var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); };
+  var fmtDay = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+  var addDays = function (d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  var mondayOf = function (d) { return addDays(d, -((d.getDay() + 6) % 7)); };
+  function weekName(id) { var thu = addDays(parseDay(id), 3); return (thu.getMonth() + 1) + '월 ' + Math.ceil(thu.getDate() / 7) + '주차'; }
+  function weekRange(id) { var a = parseDay(id), b = addDays(a, 4); return (a.getMonth() + 1) + '/' + a.getDate() + '~' + (b.getMonth() + 1) + '/' + b.getDate(); }
+  var fmtWon = function (n) { return Number(n).toLocaleString('ko-KR'); };
+  var digits = function (s) { return String(s || '').replace(/[^\d]/g, ''); };
+
+  /* ---------- 서버(구글 시트)와 통신 ---------- */
+  function call(name, args) {
+    return new Promise(function (resolve, reject) {
+      var runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+      runner[name].apply(runner, args || []);
+    });
+  }
+  var writeSeq = 0, inflight = 0, failed = false;
+  var statusEl = $('#save-status');
+  function showStatus() {
+    var waiting = false;
+    queue.forEach(function (e) { if (e.timer) waiting = true; });
+    statusEl.dataset.state = failed ? 'error' : '';
+    statusEl.textContent = failed ? '저장하지 못했습니다' : (inflight || waiting) ? '저장 중…' : (statusEl.textContent ? '모두 저장됨' : '');
+  }
+  function notice(text) { var n = $('#notice'); n.textContent = text || ''; n.hidden = !text; }
+  function errText(err) { return (err && err.message ? String(err.message) : '').replace(/^Error:\s*/, ''); }
+  function write(name, args) {
+    writeSeq++; inflight++; statusEl.textContent = '저장 중…'; showStatus();
+    return call(name, args).then(function (r) { failed = false; notice(''); return r; }, function (err) {
+      failed = true;
+      notice(errText(err) || '저장에 실패했습니다. 인터넷 연결을 확인하고 다시 입력해 보세요.');
+      throw err;
+    }).finally(function () { inflight--; writeSeq++; showStatus(); });
+  }
+
+  /* 입력이 멈추면 저장: 같은 줄은 한 번에 하나씩 순서대로 보냅니다 */
+  var queue = new Map();
+  function save(key, send, patch, input) {
+    var e = queue.get(key);
+    if (!e) { e = { send: send, patch: {}, els: new Set(), timer: null, chain: Promise.resolve() }; queue.set(key, e); }
+    Object.assign(e.patch, patch);
+    if (input) { input.dataset.dirty = '1'; e.els.add(input); }
+    clearTimeout(e.timer);
+    e.timer = setTimeout(function () { flush(e); }, 800);
+    statusEl.textContent = '저장 중…'; showStatus();
+  }
+  function flush(e) {
+    clearTimeout(e.timer); e.timer = null;
+    if (!Object.keys(e.patch).length) return e.chain;
+    var patch = e.patch; e.patch = {};
+    var sent = []; e.els.forEach(function (i) { sent.push([i, i.value]); }); e.els.clear();
+    e.chain = e.chain.then(function () { return e.send(patch); }).then(function () {
+      sent.forEach(function (p) { if (p[0].value === p[1]) delete p[0].dataset.dirty; });
+    }).catch(function () {});
+    return e.chain;
+  }
+  function flushAll() { var all = []; queue.forEach(function (e) { all.push(e.timer ? flush(e) : e.chain); }); return Promise.all(all); }
+  function dropQueue(prefix) { queue.forEach(function (e, key) { if (key.indexOf(prefix) === 0) { clearTimeout(e.timer); e.timer = null; e.patch = {}; } }); }
+  function pending() { var p = inflight > 0; queue.forEach(function (e) { if (e.timer) p = true; }); return p; }
+
+  /* ---------- 상태 ---------- */
+  var weeks = [], currentId = '', loaded = false;
+  var items = new Map(), prevItems = new Map();
+  var settings = { members: [], fundTarget: null };
+  var ownerFilter = '', focusNewId = null;
+  var rowEls = new Map(), groupEls = new Map();
+
+  function grow(t) {
+    if (t.tagName !== 'TEXTAREA') return;
+    if (window.CSS && CSS.supports && CSS.supports('field-sizing', 'content')) return;
+    t.style.height = 'auto'; t.style.height = (t.scrollHeight + 2) + 'px';
+  }
+  function setField(input, value) {
+    var v = value == null ? '' : String(value);
+    if (input.dataset.dirty || document.activeElement === input) return;
+    if (input.value !== v) { input.value = v; grow(input); }
+  }
+  function syncChildren(parent, wanted) {
+    var now = Array.prototype.slice.call(parent.children);
+    if (now.length === wanted.length && now.every(function (n, i) { return n === wanted[i]; })) return;
+    now.forEach(function (n) { if (wanted.indexOf(n) < 0) n.remove(); });
+    wanted.forEach(function (n, i) { if (parent.children[i] !== n) parent.insertBefore(n, parent.children[i] || null); });
+  }
+  function clearRows() { rowEls.clear(); groupEls.clear(); $('#groups').replaceChildren(); }
+
+  /* ---------- 서버에서 받은 내용을 화면에 반영 ---------- */
+  function applyState(s) {
+    loaded = true;
+    weeks = s.weeks || [];
+    settings = s.settings || { members: [], fundTarget: null };
+    if ((s.weekId || '') !== currentId) { clearRows(); ownerFilter = ''; resetDeleteButton(); }
+    currentId = s.weekId || '';
+    items = new Map((s.items || []).map(function (it) { return [it.id, it]; }));
+    prevItems = new Map(Object.keys(s.prev || {}).map(function (k) { return [k, s.prev[k]]; }));
+    if (s.me) $('#whoami').textContent = '로그인 계정: ' + s.me;
+    $('#week-new').disabled = false;
+    renderWeekNav(); renderShell(); renderWeekMeta(); renderReport();
+  }
+  var loading = false;
+  function load(id, tries) {
+    loading = true;
+    var seq = writeSeq;
+    return call('getState', [id || '']).then(function (s) {
+      if ((seq !== writeSeq || inflight) && (tries || 0) < 3) return load(id, (tries || 0) + 1);
+      applyState(s);
+    }).catch(function (err) {
+      if (!loaded) {
+        $('#state').replaceChildren(h('strong', { text: '주간보고를 불러오지 못했습니다' }), h('span', { text: errText(err) || '페이지를 새로 고쳐 주세요.' }));
+      }
+    }).finally(function () { loading = false; });
+  }
+  function refresh() { if (loading || pending() || !loaded) return; load(currentId); }
+  function selectWeek(id) {
+    if (id === currentId) return;
+    flushAll().then(function () {
+      clearRows(); currentId = id; items = new Map(); prevItems = new Map(); ownerFilter = '';
+      renderWeekNav(); renderShell(); renderWeekMeta();
+      load(id);
+    });
+  }
+
+  /* ---------- 주차 목록 ---------- */
+  var sel = $('#week-select');
+  function renderWeekNav() {
+    var wanted = weeks.map(function (w) { return w.id; });
+    var have = Array.prototype.map.call(sel.options, function (o) { return o.value; });
+    if (wanted.join() !== have.join()) {
+      sel.replaceChildren.apply(sel, weeks.map(function (w) { return new Option(weekName(w.id) + ' (' + weekRange(w.id) + ')', w.id); }));
+    }
+    if (currentId) sel.value = currentId;
+    var i = wanted.indexOf(currentId);
+    sel.disabled = !weeks.length;
+    $('#week-next').disabled = i <= 0;
+    $('#week-prev').disabled = i < 0 || i >= weeks.length - 1;
+  }
+  function renderShell() {
+    var state = $('#state'), layout = $('#layout');
+    if (!loaded) return;
+    if (!weeks.length) {
+      layout.hidden = true; state.hidden = false;
+      state.replaceChildren(h('strong', { text: '아직 만든 주차가 없습니다' }), h('span', { text: '위의 "새 주차" 버튼으로 이번 주 보고를 시작하세요.' }));
+      return;
+    }
+    state.hidden = true; layout.hidden = false;
+    if (currentId) { $('#week-title').textContent = weekName(currentId); $('#week-range').textContent = weekRange(currentId); }
+  }
+
+  /* ---------- 모금현황, 주간일정, 공통업무 ---------- */
+  var fAmount = $('#fund-amount'), fPct = $('#fund-pct'), fTarget = $('#fund-target');
+  function currentWeek() { for (var i = 0; i < weeks.length; i++) { if (weeks[i].id === currentId) return weeks[i]; } return null; }
+  function saveWeekField(patch, input) {
+    var id = currentId, w = currentWeek();
+    if (!w) return;
+    Object.assign(w, patch);
+    save('week:' + id, function (p) { return write('saveWeek', [id, p]); }, patch, input);
+  }
+  function renderWeekMeta() {
+    var w = currentWeek();
+    if (!w) return;
+    setField($('#schedule'), w.schedule);
+    setField($('#common'), w.common);
+    setField(fAmount, w.fundAmount == null ? '' : fmtWon(w.fundAmount));
+    setField(fPct, w.fundPct == null ? '' : w.fundPct);
+    setField(fTarget, settings.fundTarget == null ? '' : fmtWon(settings.fundTarget));
+    $('#fund-big').textContent = w.fundAmount == null ? '—' : fmtWon(w.fundAmount);
+    $('#fund-pct-big').textContent = w.fundPct == null ? '' : '(' + w.fundPct + '%)';
+    $('#fund-bar').style.width = Math.max(0, Math.min(100, Number(w.fundPct) || 0)) + '%';
+    var prev = null;
+    for (var i = 0; i < weeks.length; i++) { if (weeks[i].id < w.id && weeks[i].fundAmount != null) { prev = weeks[i]; break; } }
+    var parts = [];
+    if (w.fundAmount != null && prev) {
+      var diff = w.fundAmount - prev.fundAmount;
+      parts.push(weekName(prev.id) + ' 대비 ' + (diff >= 0 ? '+' : '−') + fmtWon(Math.abs(diff)) + '원');
+    }
+    if (settings.fundTarget) parts.push('연간 목표 ' + fmtWon(settings.fundTarget) + '원');
+    $('#fund-sub').textContent = parts.join(' · ');
+  }
+  function calcPct(amount) {
+    if (!settings.fundTarget || amount == null) return null;
+    return Math.round((amount / settings.fundTarget) * 1000) / 10;
+  }
+  fAmount.addEventListener('input', function () {
+    var d = digits(fAmount.value);
+    fAmount.value = d ? fmtWon(d) : '';
+    var amount = d ? Number(d) : null;
+    var patch = { fundAmount: amount };
+    var auto = calcPct(amount);
+    if (auto != null) { patch.fundPct = auto; fPct.value = auto; }
+    saveWeekField(patch, fAmount);
+  });
+  fPct.addEventListener('input', function () {
+    var v = fPct.value.replace(/[^\d.]/g, '');
+    if (v !== fPct.value) fPct.value = v;
+    saveWeekField({ fundPct: v === '' || isNaN(Number(v)) ? null : Number(v) }, fPct);
+  });
+  $('#schedule').addEventListener('input', function (e) { grow(e.target); saveWeekField({ schedule: e.target.value }, e.target); });
+  $('#common').addEventListener('input', function (e) { grow(e.target); saveWeekField({ common: e.target.value }, e.target); });
+  [fAmount, fPct, $('#schedule'), $('#common')].forEach(function (n) {
+    n.addEventListener('blur', function () {
+      var e = queue.get('week:' + currentId);
+      if (e && e.timer) flush(e).then(renderWeekMeta); else renderWeekMeta();
+    });
+  });
+
+  /* ---------- 팀 설정 (담당자 목록, 연간 목표) ---------- */
+  var targetTimer = null;
+  fTarget.addEventListener('input', function () {
+    var d = digits(fTarget.value);
+    fTarget.value = d ? fmtWon(d) : '';
+    fTarget.dataset.dirty = '1';
+    settings.fundTarget = d ? Number(d) : null;
+    clearTimeout(targetTimer);
+    targetTimer = setTimeout(function () {
+      var sent = fTarget.value;
+      write('saveSettings', [{ fundTarget: settings.fundTarget }]).then(function () { if (fTarget.value === sent) delete fTarget.dataset.dirty; }).catch(function () {});
+      var w = currentWeek();
+      var auto = w ? calcPct(w.fundAmount) : null;
+      if (auto != null && auto !== w.fundPct) { saveWeekField({ fundPct: auto }); }
+      renderWeekMeta();
+    }, 900);
+  });
+  function saveMembers() { write('saveSettings', [{ members: settings.members.slice() }]).catch(function () {}); }
+  $('#member-form').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var input = $('#member-name');
+    var name = input.value.replace(/,/g, ' ').trim();
+    if (!name) return;
+    if (ownerList().indexOf(name) < 0) { settings.members = settings.members.concat([name]); saveMembers(); }
+    input.value = '';
+    renderReport();
+  });
+
+  /* ---------- 보고서 본문 ---------- */
+  function sortedItems() { return Array.from(items.values()).sort(function (a, b) { return (a.order || 0) - (b.order || 0); }); }
+  function ownerList() {
+    var list = settings.members.slice();
+    sortedItems().forEach(function (it) { if (it.owner && list.indexOf(it.owner) < 0) list.push(it.owner); });
+    return list;
+  }
+  function buildRow(id) {
+    var company = h('input', { class: 'field company', id: 'co-' + id, placeholder: '기업명', maxlength: '60', 'aria-label': '기업명' });
+    var content = h('textarea', { class: 'field', id: 'ct-' + id, rows: '2', placeholder: '주요 보고사항 및 업무 진행 내용', 'aria-label': '주요 보고사항 및 업무 진행 내용' });
+    var due = h('input', { class: 'field', type: 'date', id: 'du-' + id });
+    var feedback = h('textarea', { class: 'field', id: 'fb-' + id, rows: '2', placeholder: '피드백', 'aria-label': '피드백' });
+    var prevText = h('pre');
+    var prevUse = h('button', { class: 'btn btn-quiet', type: 'button', text: '이 내용 가져오기' });
+    var prevBox = h('details', { class: 'prev', hidden: true }, h('summary', { text: '직전 주차 내용 보기' }), prevText, prevUse);
+    var del = h('button', { class: 'btn btn-quiet btn-icon', type: 'button', text: '✕', 'aria-label': '이 기업 줄 삭제', title: '삭제' });
+    var root = h('div', { class: 'row' },
+      h('div', { class: 'cell c-company' }, company),
+      h('div', { class: 'cell c-content' },
+        h('span', { class: 'lbl', text: '주요 보고사항 및 업무 진행 내용' }), content,
+        h('div', { class: 'meta' }, h('label', null, '마감기한', due), prevBox)),
+      h('div', { class: 'cell c-feedback' }, h('span', { class: 'lbl', text: '피드백' }), feedback),
+      h('div', { class: 'cell c-del' }, del));
+    var key = 'item:' + id;
+    var send = function (p) { return write('saveItem', [id, p]); };
+    function bind(input, field) {
+      input.addEventListener('input', function () {
+        grow(input);
+        var it = items.get(id); if (it) it[field] = input.value;
+        var patch = {}; patch[field] = input.value;
+        save(key, send, patch, input);
+      });
+      input.addEventListener('blur', function () {
+        var e = queue.get(key);
+        if (e && e.timer) flush(e); else { var it = items.get(id); if (it) setField(input, it[field]); }
+      });
+    }
+    bind(company, 'company'); bind(content, 'content'); bind(due, 'due'); bind(feedback, 'feedback');
+    prevUse.addEventListener('click', function () {
+      content.value = prevText.textContent; grow(content);
+      var it = items.get(id); if (it) it.content = content.value;
+      save(key, send, { content: content.value }, content);
+      prevBox.open = false;
+    });
+    var armed = null;
+    del.addEventListener('click', function () {
+      if (!armed) {
+        del.textContent = '삭제?'; del.classList.add('btn-danger'); del.style.width = 'auto'; del.style.padding = '6px 8px';
+        armed = setTimeout(function () { armed = null; del.textContent = '✕'; del.classList.remove('btn-danger'); del.style.width = ''; del.style.padding = ''; }, 3000);
+        return;
+      }
+      clearTimeout(armed);
+      dropQueue(key);
+      items.delete(id); renderReport();
+      write('deleteItem', [id]).catch(function () {});
+    });
+    var r = { root: root, company: company, content: content, due: due, feedback: feedback, prevBox: prevBox, prevText: prevText };
+    rowEls.set(id, r);
+    return r;
+  }
+  function buildGroup(owner) {
+    var count = h('span', { class: 'count' });
+    var add = h('button', { class: 'btn', type: 'button', text: '기업 추가' });
+    var remove = h('button', { class: 'btn btn-quiet', type: 'button', text: '담당자 빼기', hidden: true });
+    var rows = h('div', { class: 'rows' });
+    var empty = h('p', { class: 'empty-row', text: '이번 주 작성한 기업이 없습니다.' });
+    var root = h('section', { class: 'group' }, h('div', { class: 'group-head' }, h('h3', { text: owner }), count, remove, add), rows, empty);
+    add.addEventListener('click', function () {
+      if (!currentId) return;
+      var week = currentId;
+      add.disabled = true;
+      write('addItem', [week, owner]).then(function (item) {
+        if (currentId !== week) return;
+        items.set(item.id, item); focusNewId = item.id; renderReport();
+      }).catch(function () {}).finally(function () { add.disabled = false; });
+    });
+    remove.addEventListener('click', function () {
+      settings.members = settings.members.filter(function (m) { return m !== owner; });
+      saveMembers(); renderReport();
+    });
+    var g = { root: root, rows: rows, count: count, empty: empty, remove: remove };
+    groupEls.set(owner, g);
+    return g;
+  }
+  function renderFilters(owners) {
+    var box = $('#filters');
+    var names = [''].concat(owners);
+    var have = Array.prototype.map.call(box.children, function (c) { return c.dataset.owner; });
+    if (have.join('|') !== names.join('|')) {
+      box.replaceChildren.apply(box, names.map(function (n) {
+        var b = h('button', { class: 'chip', type: 'button', text: n || '전체', 'data-owner': n });
+        b.addEventListener('click', function () { ownerFilter = n; renderReport(); });
+        return b;
+      }));
+    }
+    Array.prototype.forEach.call(box.children, function (c) { c.setAttribute('aria-pressed', String(c.dataset.owner === ownerFilter)); });
+    box.hidden = owners.length < 2;
+  }
+  function renderReport() {
+    if (!currentId) return;
+    var owners = ownerList();
+    if (ownerFilter && owners.indexOf(ownerFilter) < 0) ownerFilter = '';
+    renderFilters(owners);
+    var sorted = sortedItems();
+    Array.from(rowEls.keys()).forEach(function (id) { if (!items.has(id)) { rowEls.get(id).root.remove(); rowEls.delete(id); } });
+    Array.from(groupEls.keys()).forEach(function (o) { if (owners.indexOf(o) < 0) { groupEls.get(o).root.remove(); groupEls.delete(o); } });
+    var shown = owners.filter(function (o) { return !ownerFilter || o === ownerFilter; });
+    var wantedGroups = shown.map(function (owner) {
+      var g = groupEls.get(owner) || buildGroup(owner);
+      var mine = sorted.filter(function (it) { return it.owner === owner; });
+      var wantedRows = mine.map(function (it) {
+        var r = rowEls.get(it.id) || buildRow(it.id);
+        setField(r.company, it.company); setField(r.content, it.content); setField(r.due, it.due); setField(r.feedback, it.feedback);
+        var prev = prevItems.get(it.owner + '|' + it.company);
+        r.prevBox.hidden = !prev;
+        if (prev && r.prevText.textContent !== prev) r.prevText.textContent = prev;
+        return r.root;
+      });
+      syncChildren(g.rows, wantedRows);
+      g.count.textContent = mine.length ? mine.length + '개 기업' : '';
+      g.empty.hidden = mine.length > 0;
+      g.remove.hidden = mine.length > 0 || settings.members.indexOf(owner) < 0;
+      return g.root;
+    });
+    var groups = $('#groups');
+    if (!owners.length) {
+      groups.replaceChildren(h('p', { class: 'empty-row', style: 'padding-top: 16px', text: '아래 "담당자 추가"에 이름을 넣으면 그 사람의 기업 업무를 적을 수 있습니다.' }));
+    } else {
+      Array.prototype.slice.call(groups.children).forEach(function (c) { if (!c.classList.contains('group')) c.remove(); });
+      syncChildren(groups, wantedGroups);
+    }
+    rowEls.forEach(function (r) { grow(r.content); grow(r.feedback); });
+    if (focusNewId && rowEls.has(focusNewId)) { rowEls.get(focusNewId).company.focus(); focusNewId = null; }
+  }
+
+  /* ---------- 새 주차 ---------- */
+  var nw = $('#newweek'), nwDate = $('#newweek-date');
+  function describeNewWeek() {
+    var hint = $('#newweek-hint');
+    if (!nwDate.value) { hint.textContent = ''; return; }
+    var id = fmtDay(mondayOf(parseDay(nwDate.value)));
+    var exists = weeks.some(function (w) { return w.id === id; });
+    hint.textContent = weekName(id) + ' (' + weekRange(id) + ')' + (exists ? '는 이미 있습니다. 만들기를 누르면 그 주차로 이동합니다.' : '를 만듭니다.');
+  }
+  $('#week-new').addEventListener('click', function () {
+    var base = weeks[0] ? addDays(parseDay(weeks[0].id), 7) : mondayOf(new Date());
+    nwDate.value = fmtDay(base);
+    $('#newweek-copy').closest('label').hidden = !weeks.length;
+    describeNewWeek();
+    nw.hidden = false; nwDate.focus();
+  });
+  nwDate.addEventListener('change', describeNewWeek);
+  $('#newweek-cancel').addEventListener('click', function () { nw.hidden = true; });
+  $('#newweek-form').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (!nwDate.value) return;
+    var id = fmtDay(mondayOf(parseDay(nwDate.value)));
+    if (weeks.some(function (w) { return w.id === id; })) { nw.hidden = true; selectWeek(id); return; }
+    var copy = $('#newweek-copy').checked;
+    var btn = $('#newweek-submit');
+    btn.disabled = true;
+    flushAll().then(function () { return write('createWeek', [id, copy]); })
+      .then(function (s) { nw.hidden = true; applyState(s); })
+      .catch(function () {}).finally(function () { btn.disabled = false; });
+  });
+  sel.addEventListener('change', function () { selectWeek(sel.value); });
+  $('#week-prev').addEventListener('click', function () { var i = weeks.map(function (w) { return w.id; }).indexOf(currentId); if (weeks[i + 1]) selectWeek(weeks[i + 1].id); });
+  $('#week-next').addEventListener('click', function () { var i = weeks.map(function (w) { return w.id; }).indexOf(currentId); if (i > 0) selectWeek(weeks[i - 1].id); });
+
+  /* ---------- 주차 삭제 (두 번 눌러 확인) ---------- */
+  var delBtn = $('#week-delete'), delArmed = null;
+  function resetDeleteButton() { clearTimeout(delArmed); delArmed = null; delBtn.textContent = '이 주차 삭제'; }
+  delBtn.addEventListener('click', function () {
+    if (!currentId) return;
+    if (!delArmed) {
+      delBtn.textContent = weekName(currentId) + ' 삭제 확인 (한 번 더 누르기)';
+      delArmed = setTimeout(resetDeleteButton, 4000);
+      return;
+    }
+    resetDeleteButton();
+    var id = currentId;
+    dropQueue('item:'); dropQueue('week:' + id);
+    delBtn.disabled = true;
+    write('deleteWeek', [id]).then(applyState).catch(function () {}).finally(function () { delBtn.disabled = false; });
+  });
+
+  /* ---------- 보고 내용 복사 ---------- */
+  function reportText() {
+    var w = currentWeek() || {};
+    var out = ['CSR협력 2팀 주간보고 자료 (' + weekRange(currentId) + ')', ''];
+    var sorted = sortedItems();
+    ownerList().forEach(function (owner) {
+      var mine = sorted.filter(function (it) { return it.owner === owner; });
+      if (!mine.length) return;
+      out.push('[' + owner + ']');
+      mine.forEach(function (it) {
+        out.push('■ ' + (it.company || '(기업명 없음)') + (it.due ? ' · 마감 ' + it.due : ''));
+        if (it.content) out.push(it.content);
+        if (it.feedback) out.push('→ 피드백: ' + it.feedback);
+        out.push('');
+      });
+    });
+    if (w.fundAmount != null) out.push('[모금현황] ' + fmtWon(w.fundAmount) + (w.fundPct != null ? ' (' + w.fundPct + '%)' : ''), '');
+    if (w.schedule) out.push('[주간일정]', w.schedule, '');
+    if (w.common) out.push('[공통업무]', w.common, '');
+    return out.join('\n').trim();
+  }
+  $('#copy-text').addEventListener('click', function () {
+    var btn = $('#copy-text');
+    var done = function (msg) { btn.textContent = msg; setTimeout(function () { btn.textContent = '보고 내용 복사'; }, 1800); };
+    var text = reportText();
+    var fallback = function () {
+      var area = $('#copy-area');
+      area.value = text; area.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      btn.focus();
+      done(ok ? '복사했습니다' : '복사하지 못했습니다');
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done('복사했습니다'); }, fallback);
+    else fallback();
+  });
+
+  /* ---------- 시작 ---------- */
+  document.addEventListener('visibilitychange', function () { if (document.hidden) flushAll(); else refresh(); });
+  window.addEventListener('pagehide', function () { flushAll(); });
+  setInterval(function () { if (!document.hidden) refresh(); }, 20000);
+  load(fmtDay(mondayOf(new Date())));
+})();
+</script>
+</body>
+</html>
