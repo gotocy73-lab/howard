@@ -64,7 +64,7 @@
   .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 12px; font-size: var(--fs-sm); cursor: pointer; }
   .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
-  .cols, .row { display: grid; grid-template-columns: minmax(110px, 170px) minmax(0, 1fr) minmax(150px, 230px) 34px; gap: 6px 12px; }
+  .cols, .row { display: grid; grid-template-columns: minmax(110px, 170px) minmax(0, 1fr) 34px; gap: 6px 12px; }
   .cols { padding: 8px 16px; font-size: var(--fs-xs); color: var(--muted); letter-spacing: .02em; border-bottom: 1px solid var(--line); }
   .group { border-bottom: 1px solid var(--line); }
   .group:last-child { border-bottom: 0; }
@@ -98,7 +98,6 @@
   .guide summary { cursor: pointer; font-weight: 600; }
   .guide ol { margin: 8px 0 0; padding-left: 1.3em; color: var(--muted); }
   .guide p { margin: 10px 0 0; color: var(--muted); }
-  .guide .manage { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; color: var(--muted); }
   #copy-area { position: fixed; left: -9999px; top: 0; }
 
   @media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
@@ -107,7 +106,7 @@
     .row { grid-template-columns: minmax(0, 1fr) 34px; }
     .row .c-company { grid-column: 1; grid-row: 1; }
     .row .c-del { grid-column: 2; grid-row: 1; }
-    .row .c-content, .row .c-feedback { grid-column: 1 / -1; }
+    .row .c-content { grid-column: 1 / -1; }
     .row .lbl { display: block; }
     .bar h1 { flex-basis: 100%; }
     #save-status { text-align: left; }
@@ -158,7 +157,7 @@
         <button class="btn" type="button" id="copy-text">보고 내용 복사</button>
       </div>
       <div class="filters" id="filters" role="group" aria-label="담당자별로 보기"></div>
-      <div class="cols" aria-hidden="true"><span>기업명</span><span>주요 보고사항 및 업무 진행 내용</span><span>피드백</span><span></span></div>
+      <div class="cols" aria-hidden="true"><span>기업명</span><span>주요 보고사항 및 업무 진행 내용</span><span></span></div>
       <div id="groups"></div>
       <form class="member-form" id="member-form">
         <label for="member-name">담당자 추가</label>
@@ -191,29 +190,15 @@
         <textarea class="field" id="schedule" rows="5" placeholder="팀 공통 주간 주요 일정 (날짜, 시간, 참석자)"></textarea>
       </section>
 
-      <section class="panel" aria-labelledby="common-h">
-        <h3 id="common-h">공통업무</h3>
-        <textarea class="field" id="common" rows="3" placeholder="통합모금 제안 등 팀 내 주요 공통업무"></textarea>
-      </section>
-
       <details class="panel guide">
         <summary>작성 방법</summary>
         <ol>
           <li>담당자별로 기업명을 적고, 주간 주요 행사와 업무계획을 작성합니다.</li>
           <li>마감기한은 내부에서 확인할 수 있도록 업무 내용에 꼭 적습니다.</li>
           <li>공통 주간일정에는 주간 주요 일정 공유사항을 작성합니다.</li>
-          <li>공통업무에는 통합모금 제안 등 팀 내 주요 공통업무를 작성합니다.</li>
         </ol>
         <p>입력을 잠시 멈추면 자동으로 저장됩니다. 다른 팀원이 고친 내용은 약 20초마다 화면에 반영됩니다.</p>
         <p id="whoami"></p>
-      </details>
-
-      <details class="panel guide">
-        <summary>주차 관리</summary>
-        <div class="manage">
-          <span>이 주차와 그 안의 모든 기업 업무를 지웁니다. 되돌릴 수 없습니다.</span>
-          <button class="btn btn-danger" type="button" id="week-delete">이 주차 삭제</button>
-        </div>
       </details>
     </aside>
   </div>
@@ -303,7 +288,7 @@
   var weeks = [], currentId = '', loaded = false;
   var items = new Map(), prevItems = new Map();
   var settings = { members: [], fundTarget: null };
-  var ownerFilter = '', focusNewId = null;
+  var ownerFilter = '', focusNewId = null, focusField = 'company';
   var rowEls = new Map(), groupEls = new Map();
 
   function grow(t) {
@@ -329,7 +314,7 @@
     loaded = true;
     weeks = s.weeks || [];
     settings = s.settings || { members: [], fundTarget: null };
-    if ((s.weekId || '') !== currentId) { clearRows(); ownerFilter = ''; resetDeleteButton(); }
+    if ((s.weekId || '') !== currentId) { clearRows(); ownerFilter = ''; }
     currentId = s.weekId || '';
     items = new Map((s.items || []).map(function (it) { return [it.id, it]; }));
     prevItems = new Map(Object.keys(s.prev || {}).map(function (k) { return [k, s.prev[k]]; }));
@@ -386,7 +371,7 @@
     if (currentId) { $('#week-title').textContent = weekName(currentId); $('#week-range').textContent = weekRange(currentId); }
   }
 
-  /* ---------- 모금현황, 주간일정, 공통업무 ---------- */
+  /* ---------- 모금현황, 공통 주간일정 ---------- */
   var fAmount = $('#fund-amount'), fPct = $('#fund-pct'), fTarget = $('#fund-target');
   function currentWeek() { for (var i = 0; i < weeks.length; i++) { if (weeks[i].id === currentId) return weeks[i]; } return null; }
   function saveWeekField(patch, input) {
@@ -399,7 +384,6 @@
     var w = currentWeek();
     if (!w) return;
     setField($('#schedule'), w.schedule);
-    setField($('#common'), w.common);
     setField(fAmount, w.fundAmount == null ? '' : fmtWon(w.fundAmount));
     setField(fPct, w.fundPct == null ? '' : w.fundPct);
     setField(fTarget, settings.fundTarget == null ? '' : fmtWon(settings.fundTarget));
@@ -435,8 +419,7 @@
     saveWeekField({ fundPct: v === '' || isNaN(Number(v)) ? null : Number(v) }, fPct);
   });
   $('#schedule').addEventListener('input', function (e) { grow(e.target); saveWeekField({ schedule: e.target.value }, e.target); });
-  $('#common').addEventListener('input', function (e) { grow(e.target); saveWeekField({ common: e.target.value }, e.target); });
-  [fAmount, fPct, $('#schedule'), $('#common')].forEach(function (n) {
+  [fAmount, fPct, $('#schedule')].forEach(function (n) {
     n.addEventListener('blur', function () {
       var e = queue.get('week:' + currentId);
       if (e && e.timer) flush(e).then(renderWeekMeta); else renderWeekMeta();
@@ -472,7 +455,13 @@
   });
 
   /* ---------- 보고서 본문 ---------- */
-  function sortedItems() { return Array.from(items.values()).sort(function (a, b) { return (a.order || 0) - (b.order || 0); }); }
+  var ETC = '기타';
+  function sortedItems() {
+    return Array.from(items.values()).sort(function (a, b) {
+      var ea = a.company === ETC ? 1 : 0, eb = b.company === ETC ? 1 : 0;
+      return (ea - eb) || ((a.order || 0) - (b.order || 0));
+    });
+  }
   function ownerList() {
     var list = settings.members.slice();
     sortedItems().forEach(function (it) { if (it.owner && list.indexOf(it.owner) < 0) list.push(it.owner); });
@@ -481,7 +470,6 @@
   function buildRow(id) {
     var company = h('input', { class: 'field company', id: 'co-' + id, placeholder: '기업명', maxlength: '60', 'aria-label': '기업명' });
     var content = h('textarea', { class: 'field', id: 'ct-' + id, rows: '2', placeholder: '주요 보고사항 및 업무 진행 내용', 'aria-label': '주요 보고사항 및 업무 진행 내용' });
-    var feedback = h('textarea', { class: 'field', id: 'fb-' + id, rows: '2', placeholder: '피드백', 'aria-label': '피드백' });
     var prevText = h('pre');
     var prevUse = h('button', { class: 'btn btn-quiet', type: 'button', text: '이 내용 가져오기' });
     var prevBox = h('details', { class: 'prev', hidden: true }, h('summary', { text: '직전 주차 내용 보기' }), prevText, prevUse);
@@ -491,7 +479,6 @@
       h('div', { class: 'cell c-content' },
         h('span', { class: 'lbl', text: '주요 보고사항 및 업무 진행 내용' }), content,
         prevBox),
-      h('div', { class: 'cell c-feedback' }, h('span', { class: 'lbl', text: '피드백' }), feedback),
       h('div', { class: 'cell c-del' }, del));
     var key = 'item:' + id;
     var send = function (p) { return write('saveItem', [id, p]); };
@@ -507,7 +494,7 @@
         if (e && e.timer) flush(e); else { var it = items.get(id); if (it) setField(input, it[field]); }
       });
     }
-    bind(company, 'company'); bind(content, 'content'); bind(feedback, 'feedback');
+    bind(company, 'company'); bind(content, 'content');
     prevUse.addEventListener('click', function () {
       content.value = prevText.textContent; grow(content);
       var it = items.get(id); if (it) it.content = content.value;
@@ -526,26 +513,35 @@
       items.delete(id); renderReport();
       write('deleteItem', [id]).catch(function () {});
     });
-    var r = { root: root, company: company, content: content, feedback: feedback, prevBox: prevBox, prevText: prevText };
+    var r = { root: root, company: company, content: content, prevBox: prevBox, prevText: prevText };
     rowEls.set(id, r);
     return r;
   }
   function buildGroup(owner) {
     var count = h('span', { class: 'count' });
     var add = h('button', { class: 'btn', type: 'button', text: '기업 추가' });
+    var etc = h('button', { class: 'btn', type: 'button', text: '기타 추가' });
     var remove = h('button', { class: 'btn btn-quiet', type: 'button', text: '담당자 빼기', hidden: true });
     var rows = h('div', { class: 'rows' });
     var empty = h('p', { class: 'empty-row', text: '이번 주 작성한 기업이 없습니다.' });
-    var root = h('section', { class: 'group' }, h('div', { class: 'group-head' }, h('h3', { text: owner }), count, remove, add), rows, empty);
-    add.addEventListener('click', function () {
+    var root = h('section', { class: 'group' }, h('div', { class: 'group-head' }, h('h3', { text: owner }), count, remove, add, etc), rows, empty);
+    function addRow(btn, company) {
       if (!currentId) return;
       var week = currentId;
-      add.disabled = true;
+      if (company) {
+        var have = sortedItems().filter(function (it) { return it.owner === owner && it.company === company; })[0];
+        if (have && rowEls.has(have.id)) { rowEls.get(have.id).content.focus(); return; }
+      }
+      btn.disabled = true;
       write('addItem', [week, owner]).then(function (item) {
         if (currentId !== week) return;
-        items.set(item.id, item); focusNewId = item.id; renderReport();
-      }).catch(function () {}).finally(function () { add.disabled = false; });
-    });
+        if (company) item.company = company;
+        items.set(item.id, item); focusNewId = item.id; focusField = company ? 'content' : 'company'; renderReport();
+        if (company) save('item:' + item.id, function (p) { return write('saveItem', [item.id, p]); }, { company: company });
+      }).catch(function () {}).finally(function () { btn.disabled = false; });
+    }
+    add.addEventListener('click', function () { addRow(add, ''); });
+    etc.addEventListener('click', function () { addRow(etc, ETC); });
     remove.addEventListener('click', function () {
       settings.members = settings.members.filter(function (m) { return m !== owner; });
       saveMembers(); renderReport();
@@ -582,7 +578,7 @@
       var mine = sorted.filter(function (it) { return it.owner === owner; });
       var wantedRows = mine.map(function (it) {
         var r = rowEls.get(it.id) || buildRow(it.id);
-        setField(r.company, it.company); setField(r.content, it.content); setField(r.feedback, it.feedback);
+        setField(r.company, it.company); setField(r.content, it.content);
         var prev = prevItems.get(it.owner + '|' + it.company);
         r.prevBox.hidden = !prev;
         if (prev && r.prevText.textContent !== prev) r.prevText.textContent = prev;
@@ -601,8 +597,8 @@
       Array.prototype.slice.call(groups.children).forEach(function (c) { if (!c.classList.contains('group')) c.remove(); });
       syncChildren(groups, wantedGroups);
     }
-    rowEls.forEach(function (r) { grow(r.content); grow(r.feedback); });
-    if (focusNewId && rowEls.has(focusNewId)) { rowEls.get(focusNewId).company.focus(); focusNewId = null; }
+    rowEls.forEach(function (r) { grow(r.content); });
+    if (focusNewId && rowEls.has(focusNewId)) { rowEls.get(focusNewId)[focusField].focus(); focusNewId = null; }
   }
 
   /* ---------- 새 주차 ---------- */
@@ -639,23 +635,6 @@
   $('#week-prev').addEventListener('click', function () { var i = weeks.map(function (w) { return w.id; }).indexOf(currentId); if (weeks[i + 1]) selectWeek(weeks[i + 1].id); });
   $('#week-next').addEventListener('click', function () { var i = weeks.map(function (w) { return w.id; }).indexOf(currentId); if (i > 0) selectWeek(weeks[i - 1].id); });
 
-  /* ---------- 주차 삭제 (두 번 눌러 확인) ---------- */
-  var delBtn = $('#week-delete'), delArmed = null;
-  function resetDeleteButton() { clearTimeout(delArmed); delArmed = null; delBtn.textContent = '이 주차 삭제'; }
-  delBtn.addEventListener('click', function () {
-    if (!currentId) return;
-    if (!delArmed) {
-      delBtn.textContent = weekName(currentId) + ' 삭제 확인 (한 번 더 누르기)';
-      delArmed = setTimeout(resetDeleteButton, 4000);
-      return;
-    }
-    resetDeleteButton();
-    var id = currentId;
-    dropQueue('item:'); dropQueue('week:' + id);
-    delBtn.disabled = true;
-    write('deleteWeek', [id]).then(applyState).catch(function () {}).finally(function () { delBtn.disabled = false; });
-  });
-
   /* ---------- 보고 내용 복사 ---------- */
   function reportText() {
     var w = currentWeek() || {};
@@ -668,13 +647,11 @@
       mine.forEach(function (it) {
         out.push('■ ' + (it.company || '(기업명 없음)'));
         if (it.content) out.push(it.content);
-        if (it.feedback) out.push('→ 피드백: ' + it.feedback);
         out.push('');
       });
     });
     if (w.fundAmount != null) out.push('[모금현황] ' + fmtWon(w.fundAmount) + (w.fundPct != null ? ' (' + w.fundPct + '%)' : ''), '');
     if (w.schedule) out.push('[공통 주간일정]', w.schedule, '');
-    if (w.common) out.push('[공통업무]', w.common, '');
     return out.join('\n').trim();
   }
   $('#copy-text').addEventListener('click', function () {
