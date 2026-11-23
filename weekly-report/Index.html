@@ -120,6 +120,7 @@
     <h1>CSR협력 2팀 주간보고</h1>
     <div class="weeknav">
       <button class="btn btn-icon" id="week-prev" type="button" aria-label="이전 주차" disabled>◀</button>
+      <select class="field" id="year-select" aria-label="연도 선택" hidden></select>
       <select class="field" id="week-select" aria-label="주차 선택" disabled></select>
       <button class="btn btn-icon" id="week-next" type="button" aria-label="다음 주차" disabled>▶</button>
       <button class="btn btn-primary" id="week-new" type="button" disabled>새 주차</button>
@@ -345,20 +346,43 @@
     });
   }
 
-  /* ---------- 주차 목록 ---------- */
-  var sel = $('#week-select');
+  /* ---------- 주차 목록: 연도를 고르면 그해 주차만 월별로 묶어 보여줍니다 ---------- */
+  var sel = $('#week-select'), yearSel = $('#year-select'), viewYear = '';
+  function weekYear(id) { return String(addDays(parseDay(id), 3).getFullYear()); }
+  function weekMonth(id) { return (addDays(parseDay(id), 3).getMonth() + 1) + '월'; }
   function renderWeekNav() {
-    var wanted = weeks.map(function (w) { return w.id; });
-    var have = Array.prototype.map.call(sel.options, function (o) { return o.value; });
-    if (wanted.join() !== have.join()) {
-      sel.replaceChildren.apply(sel, weeks.map(function (w) { return new Option(weekName(w.id) + ' (' + weekRange(w.id) + ')', w.id); }));
+    var years = [];
+    weeks.forEach(function (w) { var y = weekYear(w.id); if (years.indexOf(y) < 0) years.push(y); });
+    if (currentId) viewYear = weekYear(currentId);
+    if (years.indexOf(viewYear) < 0) viewYear = years[0] || '';
+    var haveYears = Array.prototype.map.call(yearSel.options, function (o) { return o.value; });
+    if (years.join() !== haveYears.join()) {
+      yearSel.replaceChildren.apply(yearSel, years.map(function (y) { return new Option(y + '년', y); }));
+    }
+    yearSel.value = viewYear;
+    yearSel.hidden = years.length < 2;
+    var list = weeks.filter(function (w) { return weekYear(w.id) === viewYear; });
+    var key = viewYear + ':' + list.map(function (w) { return w.id; }).join();
+    if (sel.dataset.key !== key) {
+      var groups = [], byMonth = {};
+      list.forEach(function (w) {
+        var m = weekMonth(w.id);
+        if (!byMonth[m]) { byMonth[m] = h('optgroup', { label: m }); groups.push(byMonth[m]); }
+        byMonth[m].append(new Option(weekName(w.id) + ' (' + weekRange(w.id) + ')', w.id));
+      });
+      sel.replaceChildren.apply(sel, groups);
+      sel.dataset.key = key;
     }
     if (currentId) sel.value = currentId;
-    var i = wanted.indexOf(currentId);
+    var i = weeks.map(function (w) { return w.id; }).indexOf(currentId);
     sel.disabled = !weeks.length;
     $('#week-next').disabled = i <= 0;
     $('#week-prev').disabled = i < 0 || i >= weeks.length - 1;
   }
+  yearSel.addEventListener('change', function () {
+    var latest = weeks.filter(function (w) { return weekYear(w.id) === yearSel.value; })[0];
+    if (latest) selectWeek(latest.id);
+  });
   function renderShell() {
     var state = $('#state'), layout = $('#layout');
     if (!loaded) return;
